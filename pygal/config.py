@@ -256,6 +256,14 @@ class Config(CommonConfig):
     show_y_guides = Key(True, bool, "Look",
                         "Set to false to hide y guide lines")
 
+    reduce_y_guides_to_ticks = Key(
+        False, bool, "Look",
+        "Set to true to reduce the y guide lines to ticks outside the axis")
+
+    reduce_x_guides_to_ticks = Key(
+        False, bool, "Look",
+        "Set to true to reduce the x guide lines to ticks outside the axis")
+
     show_legend = Key(
         True, bool, "Look", "Set to false to remove legend")
 
