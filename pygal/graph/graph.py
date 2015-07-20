@@ -142,6 +142,13 @@ class Graph(PublicApi):
                           class_='line')
         lastlabel = self._x_labels[-1][0]
 
+        if self.reduce_x_guides_to_ticks:
+            guide_y = self.view.height
+            guide_length = -(self.view.height - self.view.y(self._y_labels[0][1]))
+        else:
+            guide_y = None
+            guide_length = None
+
         for label, position in self._x_labels:
             major = label in self._x_major_labels
             if not (self.show_minor_x_labels or major):
@@ -150,9 +157,13 @@ class Graph(PublicApi):
             x = self.view.x(position)
             y = self.view.height + 5
             last_guide = (self._y_2nd_labels and label == lastlabel)
+
             self.svg.node(
                 guides, 'path',
-                d='M%f %f v%f' % (x or 0, 0, self.view.height),
+                d='M%f %f v%f' % (
+                    x or 0,
+                    position != 0 and guide_y or 0,
+                    position != 0 and guide_length or self.view.height),
                 class_='%s%s%sline' % (
                     'axis ' if label == "0" else '',
                     'major ' if major else '',
@@ -216,6 +227,11 @@ class Graph(PublicApi):
                 class_='line'
             )
 
+        if self.reduce_y_guides_to_ticks:
+            guide_length = self.view.x(self._x_labels[0][1])
+        else:
+            guide_length = None
+
         for label, position in self._y_labels:
             major = position in self._y_major_labels
             if not (self.show_minor_y_labels or major):
@@ -227,10 +243,14 @@ class Graph(PublicApi):
             y = self.view.y(position)
             if not y:
                 continue
+
             if self.show_y_guides:
                 self.svg.node(
                     guides, 'path',
-                    d='M%f %f h%f' % (0, y, self.view.width),
+                    d='M%f %f h%f' % (
+                        0,
+                        y,
+                        position != 0 and guide_length or self.view.width),
                     class_='%s%s%sline' % (
                         'axis ' if label == "0" else '',
                         'major ' if major else '',
