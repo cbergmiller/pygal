@@ -23,8 +23,14 @@ from pygal import (
     Line, Dot, Pie, Treemap, Radar, Config, Bar, Funnel,
     Histogram, Gauge, Box, XY,
     Pyramid, HorizontalBar, HorizontalStackedBar,
-    DateTimeLine, TimeLine, DateLine, TimeDeltaLine)
+    HorizontalStackedLine, HorizontalLine,
+    DateTimeLine, TimeLine, DateLine, TimeDeltaLine,
+    SolidGauge
+)
 from pygal.graph.map import BaseMap
+from pygal.graph.horizontal import HorizontalGraph
+from pygal.graph.dual import Dual
+from pygal import formatters
 from pygal._compat import u
 from pygal.test.utils import texts
 from tempfile import NamedTemporaryFile
@@ -250,8 +256,10 @@ def test_human_readable():
     line.add('_', [10 ** 4, 10 ** 5, 23 * 10 ** 4])
     q = line.render_pyquery()
     assert q(".axis.y text").map(texts) == list(map(
-        str, map(float, range(20000, 240000, 20000))))
-    line.human_readable = True
+        str, range(20000, 240000, 20000)))
+
+    line.value_formatter = formatters.human_readable
+
     q = line.render_pyquery()
     assert q(".axis.y text").map(texts) == list(map(
         lambda x: '%dk' % x, range(20, 240, 20)))
@@ -293,7 +301,7 @@ def test_include_x_axis(Chart):
     """Test x axis inclusion option"""
     chart = Chart()
     if Chart in (
-            Pie, Treemap, Radar, Funnel, Dot, Gauge, Histogram, Box
+            Pie, Treemap, Radar, Funnel, Dot, Gauge, Histogram, Box, SolidGauge
     ) or issubclass(Chart, BaseMap):
         return
     if not chart._dual:
@@ -306,12 +314,12 @@ def test_include_x_axis(Chart):
     yaxis = ".axis.%s .guides text" % (
         'y' if not getattr(chart, 'horizontal', False) else 'x')
     if not isinstance(chart, Bar):
-        assert '0.0' not in q(yaxis).map(texts)
+        assert '0' not in q(yaxis).map(texts)
     else:
-        assert '0.0' in q(yaxis).map(texts)
+        assert '0' in q(yaxis).map(texts)
     chart.include_x_axis = True
     q = chart.render_pyquery()
-    assert '0.0' in q(yaxis).map(texts)
+    assert '0' in q(yaxis).map(texts)
 
 
 def test_css(Chart):
@@ -382,13 +390,30 @@ def test_x_y_title(Chart):
     assert len(q('.titles .title')) == 3
 
 
+def test_range(Chart):
+    """Test y label major option"""
+    if Chart in (
+            Pie, Treemap, Dot, SolidGauge
+    ) or issubclass(Chart, BaseMap):
+        return
+    chart = Chart()
+    chart.range = (0, 100)
+    chart.add('', [1, 2, 10])
+    q = chart.render_pyquery()
+    axis = map(str, range(0, 101, 10))
+    if Chart == Radar:
+        axis = map(str, range(100, -1, -20))
+    z = 'x' if getattr(chart, 'horizontal', False) or Chart == Gauge else 'y'
+    assert [t.text for t in q('.axis.%s .guides text' % z)] == list(axis)
+
+
 def test_x_label_major(Chart):
     """Test x label major option"""
     if Chart in (
-            Pie, Treemap, Funnel, Dot, Gauge, Histogram, Box,
+            Pie, Treemap, Funnel, Dot, Gauge, Histogram, Box, SolidGauge,
             Pyramid, DateTimeLine, TimeLine, DateLine,
             TimeDeltaLine
-    ) or issubclass(Chart, BaseMap) or Chart._dual:
+    ) or issubclass(Chart, (BaseMap, Dual, HorizontalGraph)):
         return
     chart = Chart()
     chart.add('test', range(12))
@@ -430,8 +455,9 @@ def test_x_label_major(Chart):
 def test_y_label_major(Chart):
     """Test y label major option"""
     if Chart in (
-            Pie, Treemap, Funnel, Dot, Gauge, Histogram, Box,
+            Pie, Treemap, Funnel, Dot, Gauge, Histogram, Box, SolidGauge,
             HorizontalBar, HorizontalStackedBar,
+            HorizontalStackedLine, HorizontalLine,
             Pyramid, DateTimeLine, TimeLine, DateLine,
             TimeDeltaLine
     ) or issubclass(Chart, BaseMap):
@@ -500,3 +526,19 @@ def test_render_data_uri(Chart):
     chart.add(u('èèè'), [10, 21, 5])
     assert chart.render_data_uri().startswith(
         'data:image/svg+xml;charset=utf-8;base64,')
+
+
+def test_formatters(Chart):
+    """Test custom formatters"""
+    if Chart._dual or Chart == Box:
+        return
+    chart = Chart(formatter=lambda x, chart, serie: '%s%s$' % (
+            x, serie.title))
+    chart.add('_a', [1, 2, {'value': 3, 'formatter': lambda x: u('%s¥') % x}])
+    chart.add('_b', [4, 5, 6], formatter=lambda x: u('%s€') % x)
+    chart.x_labels = [2, 4, 6]
+    chart.x_labels_major = [4]
+    q = chart.render_pyquery()
+    assert set([v.text for v in q(".value")]) == set((
+        u('4€'), u('5€'), u('6€'), '1_a$', '2_a$', u('3¥')) + (
+            ('6_a$', u('15€')) if Chart in (Pie, SolidGauge) else ()))

@@ -46,8 +46,8 @@ def test_simple_line():
         '-30', '-25', '-20', '-15', '-10', '-5',
         '0', '5', '10', '15', '20', '25', '30']
     assert q(".axis.y text").map(texts) == [
-        '-1.2', '-1.0', '-0.8', '-0.6', '-0.4', '-0.2',
-        '0.0', '0.2', '0.4', '0.6', '0.8', '1.0', '1.2']
+        '-1.2', '-1', '-0.8', '-0.6', '-0.4', '-0.2',
+        '0', '0.2', '0.4', '0.6', '0.8', '1', '1.2']
     assert q(".title").text() == 'cos sin and cos - sin'
     assert q(".legend text").map(texts) == ['test1', 'test2', 'test3']
 
@@ -95,12 +95,26 @@ def test_not_equal_x_labels():
     """Test x_labels"""
     line = Line()
     line.add('test1', range(100))
+    line.truncate_label = -1
     line.x_labels = map(str, range(11))
     q = line.render_pyquery()
     assert len(q(".dots")) == 100
     assert len(q(".axis.x")) == 1
-    assert q(".axis.x text").map(texts) == ['0', '1', '2', '3', '4', '5', '6',
-                                            '7', '8', '9', '10']
+    assert q(".axis.x text").map(texts) == [
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+
+
+def test_int_x_labels():
+    """Test x_labels"""
+    line = Line()
+    line.add('test1', range(100))
+    line.truncate_label = -1
+    line.x_labels = list(range(11))
+    q = line.render_pyquery()
+    assert len(q(".dots")) == 100
+    assert len(q(".axis.x")) == 1
+    assert q(".axis.x text").map(texts) == [
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
 
 
 def test_only_major_dots_every():

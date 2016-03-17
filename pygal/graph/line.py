@@ -23,8 +23,9 @@ connected by straight segments
 """
 
 from __future__ import division
+
 from pygal.graph.graph import Graph
-from pygal.util import cached_property, compute_scale, decorate, alter
+from pygal.util import alter, cached_property, decorate
 
 
 class Line(Graph):
@@ -100,7 +101,7 @@ class Line(Graph):
                     continue
                 if (serie.show_only_major_dots and
                         self.x_labels and i < len(self.x_labels) and
-                        self.x_labels[i] not in self._x_major_labels):
+                        self.x_labels[i] not in self._x_labels_major):
                     continue
 
                 metadata = serie.metadata.get(i)
@@ -110,20 +111,27 @@ class Line(Graph):
                 if y > self.view.height / 2:
                     classes.append('top')
                 classes = ' '.join(classes)
+
+                self._confidence_interval(
+                    serie_node['overlay'], x, y, serie.values[i], metadata)
+
                 dots = decorate(
                     self.svg,
                     self.svg.node(serie_node['overlay'], class_="dots"),
                     metadata)
-                val = self._get_value(serie.points, i)
+
+                val = self._format(serie, i)
                 alter(self.svg.transposable_node(
                     dots, 'circle', cx=x, cy=y, r=serie.dots_size,
                     class_='dot reactive tooltip-trigger'), metadata)
                 self._tooltip_data(
-                    dots, val, x, y)
+                    dots, val, x, y,
+                    xlabel=self._get_x_label(i))
                 self._static_value(
                     serie_node, val,
                     x + self.style.value_font_size,
-                    y + self.style.value_font_size)
+                    y + self.style.value_font_size,
+                    metadata)
 
         if serie.stroke:
             if self.interpolate:
@@ -133,30 +141,49 @@ class Line(Graph):
                 view_values = list(map(self.view, points))
             if serie.fill:
                 view_values = self._fill(view_values)
-            self.svg.line(
-                serie_node['plot'], view_values, close=self._self_close,
-                class_='line reactive' + (' nofill' if not serie.fill else ''))
+
+            if serie.allow_interruptions:
+                # view_values are in form [(x1, y1), (x2, y2)]. We
+                # need to split that into multiple sequences if a
+                # None is present here
+
+                sequences = []
+                cur_sequence = []
+                for x, y in view_values:
+                    if y is None and len(cur_sequence) > 0:
+                        # emit current subsequence
+                        sequences.append(cur_sequence)
+                        cur_sequence = []
+                    elif y is None:       # just discard
+                        continue
+                    else:
+                        cur_sequence.append((x, y))   # append the element
+
+                if len(cur_sequence) > 0:      # emit last possible sequence
+                    sequences.append(cur_sequence)
+            else:
+                # plain vanilla rendering
+                sequences = [view_values]
+
+            for seq in sequences:
+                self.svg.line(
+                    serie_node['plot'], seq, close=self._self_close,
+                    class_='line reactive' +
+                           (' nofill' if not serie.fill else ''))
 
     def _compute(self):
         """Compute y min and max and y scale and set labels"""
         # X Labels
-        x_pos = [
-            x / (self._len - 1) for x in range(self._len)
-        ] if self._len != 1 else [.5]  # Center if only one value
-
-        self._points(x_pos)
-
-        if self.x_labels:
-            label_len = len(self.x_labels)
-            if label_len != self._len:
-                label_pos = [0.5] if label_len == 1 else [
-                    x / (label_len - 1) for x in range(label_len)
-                ]
-                self._x_labels = list(zip(self.x_labels, label_pos))
-            else:
-                self._x_labels = list(zip(self.x_labels, x_pos))
+        if self.horizontal:
+            self._x_pos = [
+                x / (self._len - 1) for x in range(self._len)
+            ][::-1] if self._len != 1 else [.5]  # Center if only one value
         else:
-            self._x_labels = None
+            self._x_pos = [
+                x / (self._len - 1) for x in range(self._len)
+            ] if self._len != 1 else [.5]  # Center if only one value
+
+        self._points(self._x_pos)
 
         if self.include_x_axis:
             # Y Label
@@ -165,17 +192,6 @@ class Line(Graph):
         else:
             self._box.ymin = self._min
             self._box.ymax = self._max
-
-        if self.y_labels:
-            self._box.ymin = min(self._box.ymin, min(self.y_labels))
-            self._box.ymax = max(self._box.ymax, max(self.y_labels))
-
-        y_pos = compute_scale(
-            self._box.ymin, self._box.ymax, self.logarithmic, self.order_min,
-            self.min_scale, self.max_scale
-        ) if not self.y_labels else list(map(float, self.y_labels))
-
-        self._y_labels = list(zip(map(self._format, y_pos), y_pos))
 
     def _plot(self):
         """Plot the serie lines and secondary serie lines"""

@@ -20,8 +20,10 @@
 
 from __future__ import division
 
+from itertools import chain
+
 from pygal import colors
-from pygal.colors import darken, lighten
+from pygal.colors import darken, is_foreground_light, lighten
 
 
 class Style(object):
@@ -30,17 +32,19 @@ class Style(object):
 
     plot_background = 'rgba(255, 255, 255, 1)'
     background = 'rgba(249, 249, 249, 1)'
+    value_background = 'rgba(229, 229, 229, 1)'
     foreground = 'rgba(0, 0, 0, .87)'
     foreground_strong = 'rgba(0, 0, 0, 1)'
     foreground_subtle = 'rgba(0, 0, 0, .54)'
 
     # Monospaced font is highly encouraged
-    font_family = 'Consolas, "Liberation Mono", Menlo, Courier, '
-    'monospace'
+    font_family = (
+        'Consolas, "Liberation Mono", Menlo, Courier, monospace')
 
     label_font_family = None
     major_label_font_family = None
     value_font_family = None
+    value_label_font_family = None
     tooltip_font_family = None
     title_font_family = None
     legend_font_family = None
@@ -48,13 +52,14 @@ class Style(object):
 
     label_font_size = 10
     major_label_font_size = 10
-    value_font_size = 8
-    tooltip_font_size = 16
+    value_font_size = 16
+    value_label_font_size = 10
+    tooltip_font_size = 14
     title_font_size = 16
     legend_font_size = 14
     no_data_font_size = 64
 
-    # Guide line stroke style
+    # Guide line dash array style
     guide_stroke_dasharray = '4,4'
     major_guide_stroke_dasharray = '6,6'
 
@@ -77,11 +82,13 @@ class Style(object):
         '#FFEB3B',  # 12
         '#673AB7',  # 3
         '#00BCD4',  # 7
-        '#CDDC39',  # 11
-        '#795548',  # 16
+        '#CDDC39',  # 11b
         '#9E9E9E',  # 17
         '#607D8B',  # 18
     )
+
+    value_colors = ()
+    ci_colors = ()
 
     def __init__(self, **kwargs):
         """Create the style"""
@@ -98,7 +105,8 @@ class Style(object):
                     setattr(self, name, self.font_family)
                 elif fn.startswith('googlefont:'):
                     setattr(self, name, fn.replace('googlefont:', ''))
-                    self._google_fonts.add(getattr(self, name).split(',')[0].strip())
+                    self._google_fonts.add(
+                        getattr(self, name).split(',')[0].strip())
 
     def get_colors(self, prefix, len_):
         """Get the css color list"""
@@ -109,6 +117,22 @@ class Style(object):
                 '  stroke: {1};\n'
                 '  fill: {1};\n'
                 '}}\n') % (prefix, prefix)).format(*tupl)
+
+        def value_color(tupl):
+            """Make a value color css"""
+            return ((
+                '%s .text-overlay .color-{0} text {{\n'
+                '  fill: {1};\n'
+                '}}\n') % (prefix,)).format(*tupl)
+
+        def ci_color(tupl):
+            """Make a value color css"""
+            if not tupl[1]:
+                return ''
+            return ((
+                '%s .color-{0} .ci {{\n'
+                '  stroke: {1};\n'
+                '}}\n') % (prefix,)).format(*tupl)
 
         if len(self.colors) < len_:
             missing = len_ - len(self.colors)
@@ -125,7 +149,19 @@ class Style(object):
         else:
             colors = self.colors[:len_]
 
-        return '\n'.join(map(color, enumerate(colors)))
+        # Auto compute foreground value color when color is missing
+        value_colors = []
+        for i in range(len_):
+            if i < len(self.value_colors) and self.value_colors[i] is not None:
+                value_colors.append(self.value_colors[i])
+            else:
+                value_colors.append('white' if is_foreground_light(
+                    colors[i]) else 'black')
+
+        return '\n'.join(chain(
+            map(color, enumerate(colors)),
+            map(value_color, enumerate(value_colors)),
+            map(ci_color, enumerate(self.ci_colors))))
 
     def to_dict(self):
         """Convert instance to a serializable mapping."""

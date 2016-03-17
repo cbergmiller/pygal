@@ -20,9 +20,11 @@
 """Gauge chart representing values as needles on a polar scale"""
 
 from __future__ import division
-from pygal.util import decorate, compute_scale, alter
-from pygal.view import PolarThetaView, PolarThetaLogView
+
+from pygal._compat import is_str
 from pygal.graph.graph import Graph
+from pygal.util import alter, compute_scale, cut, decorate
+from pygal.view import PolarThetaLogView, PolarThetaView
 
 
 class Gauge(Graph):
@@ -53,7 +55,7 @@ class Gauge(Graph):
             def point(x, y):
                 return '%f %f' % self.view((x, y))
 
-            value = self._format(serie.values[i])
+            val = self._format(serie, i)
             metadata = serie.metadata.get(i)
             gauges = decorate(
                 self.svg,
@@ -85,12 +87,14 @@ class Gauge(Graph):
                 metadata)
 
             x, y = self.view((.75, theta))
-            self._tooltip_data(gauges, value, x, y)
-            self._static_value(serie_node, value, x, y)
+            self._tooltip_data(
+                gauges, val, x, y,
+                xlabel=self._get_x_label(i))
+            self._static_value(serie_node, val, x, y, metadata)
 
     def _y_axis(self, draw_axes=True):
         """Override y axis to plot a polar axis"""
-        axis = self.svg.node(self.nodes['plot'], class_="axis y x gauge")
+        axis = self.svg.node(self.nodes['plot'], class_="axis x gauge")
 
         for i, (label, theta) in enumerate(self._y_labels):
             guides = self.svg.node(axis, class_='guides')
@@ -114,9 +118,13 @@ class Gauge(Graph):
                 y=y
             ).text = label
 
+            self.svg.node(
+                guides, 'title',
+            ).text = self._y_format(theta)
+
     def _x_axis(self, draw_axes=True):
         """Override x axis to put a center circle in center"""
-        axis = self.svg.node(self.nodes['plot'], class_="axis x gauge")
+        axis = self.svg.node(self.nodes['plot'], class_="axis y gauge")
         x, y = self.view((0, 0))
         self.svg.node(axis, 'circle', cx=x, cy=y, r=4)
 
@@ -132,12 +140,36 @@ class Gauge(Graph):
             0, 1,
             self.min_,
             self.max_)
-        y_pos = compute_scale(
-            self.min_, self.max_, self.logarithmic, self.order_min,
-            self.min_scale, self.max_scale
-        ) if not self.y_labels else list(map(float, self.y_labels))
 
-        self._y_labels = list(zip(map(self._format, y_pos), y_pos))
+    def _compute_x_labels(self):
+        pass
+
+    def _compute_y_labels(self):
+        y_pos = compute_scale(
+            self.min_, self.max_, self.logarithmic,
+            self.order_min, self.min_scale, self.max_scale
+        )
+        if self.y_labels:
+            self._y_labels = []
+            for i, y_label in enumerate(self.y_labels):
+                if isinstance(y_label, dict):
+                    pos = self._adapt(y_label.get('value'))
+                    title = y_label.get('label', self._y_format(pos))
+                elif is_str(y_label):
+                    pos = self._adapt(y_pos[i])
+                    title = y_label
+                else:
+                    pos = self._adapt(y_label)
+                    title = self._y_format(pos)
+                self._y_labels.append((title, pos))
+            self.min_ = min(self.min_, min(cut(self._y_labels, 1)))
+            self.max_ = max(self.max_, max(cut(self._y_labels, 1)))
+            self._box.set_polar_box(
+                0, 1,
+                self.min_,
+                self.max_)
+        else:
+            self._y_labels = list(zip(map(self._y_format, y_pos), y_pos))
 
     def _plot(self):
         """Plot all needles"""

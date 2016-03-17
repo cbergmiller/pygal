@@ -20,9 +20,10 @@
 """Treemap chart: Visualize data using nested recangles"""
 
 from __future__ import division
-from pygal.util import decorate, cut, alter
+
+from pygal.adapters import none_to_zero, positive
 from pygal.graph.graph import Graph
-from pygal.adapters import positive, none_to_zero
+from pygal.util import alter, cut, decorate
 
 
 class Treemap(Graph):
@@ -38,7 +39,8 @@ class Treemap(Graph):
         rh -= ry
 
         metadata = serie.metadata.get(i)
-        value = self._format(val)
+
+        val = self._format(serie, i)
 
         rect = decorate(
             self.svg,
@@ -55,13 +57,17 @@ class Treemap(Graph):
                 class_='rect reactive tooltip-trigger'),
             metadata)
 
-        self._tooltip_data(rect, value,
-                           rx + rw / 2,
-                           ry + rh / 2,
-                           classes='centered')
-        self._static_value(serie_node, value,
-                           rx + rw / 2,
-                           ry + rh / 2)
+        self._tooltip_data(
+            rect, val,
+            rx + rw / 2,
+            ry + rh / 2,
+            'centered',
+            self._get_x_label(i))
+        self._static_value(
+            serie_node, val,
+            rx + rw / 2,
+            ry + rh / 2,
+            metadata)
 
     def _binary_tree(self, data, total, x, y, w, h, parent=None):
         if total == 0:
@@ -114,6 +120,12 @@ class Treemap(Graph):
                 half1, half1_sum, x, y, x_pivot, h, parent)
             self._binary_tree(
                 half2, half2_sum, x + x_pivot, y, w - x_pivot, h, parent)
+
+    def _compute_x_labels(self):
+        pass
+
+    def _compute_y_labels(self):
+        pass
 
     def _plot(self):
         total = sum(map(sum, map(lambda x: x.values, self.series)))

@@ -24,6 +24,7 @@ import pygal
 import uuid
 import sys
 import pytest
+import io
 from pygal.graph.map import BaseMap
 from pygal.util import cut
 from pygal._compat import u
@@ -53,7 +54,7 @@ def test_render_to_file(Chart, datas):
     chart = Chart()
     chart = make_data(chart, datas)
     chart.render_to_file(file_name)
-    with open(file_name) as f:
+    with io.open(file_name, encoding="utf-8") as f:
         assert 'pygal' in f.read()
     os.remove(file_name)
 
@@ -106,7 +107,7 @@ def test_metadata(Chart):
     for md in ('http://7.example.com/', 'http://4.example.com/'):
         assert md in [e.attrib.get('xlink:href') for e in q('a')]
 
-    if Chart in (pygal.Pie, pygal.Treemap):
+    if Chart in (pygal.Pie, pygal.Treemap, pygal.SolidGauge):
         # Slices with value 0 are not rendered
         assert len(v) - 1 == len(q('.tooltip-trigger').siblings('.value'))
     elif not issubclass(Chart, BaseMap):
@@ -398,11 +399,7 @@ def test_labels_with_links(Chart):
     q = chart.render_pyquery()
     links = q('a')
 
-    if isinstance(chart, BaseMap):
-        # No country is found in this case so:
-        assert len(links) == 3
-    else:
-        assert len(links) == 7
+    assert len(links) == 7 or isinstance(chart, BaseMap) and len(links) == 3
 
 
 def test_sparkline(Chart, datas):

@@ -23,7 +23,7 @@
 }
 
 {{ id }}.guide.line {
-  fill-opacity: 0;
+  fill: none;
 }
 
 {{ id }}.centered {
@@ -46,11 +46,24 @@
   text-anchor: start;
 }
 
+{{ id }}.axis.x:not(.web) text[transform].backwards {
+  text-anchor: end;
+}
+
 {{ id }}.axis.y text {
   text-anchor: end;
 }
+
+{{ id }}.axis.y text[transform].backwards {
+  text-anchor: start;
+}
+
 {{ id }}.axis.y2 text {
   text-anchor: start;
+}
+
+{{ id }}.axis.y2 text[transform].backwards {
+  text-anchor: end;
 }
 
 {{ id }}.axis .guide.line {
@@ -112,9 +125,28 @@
 }
 
 {{ id }}.tooltip rect {
-  fill-opacity: 0.8;
+  fill-opacity: .95;
+  stroke-width: .5;
 }
 
 {{ id }}.tooltip text {
   fill-opacity: 1;
+}
+
+{{ id }}.showable {
+  visibility: hidden;
+}
+
+{{ id }}.showable.shown {
+  visibility: visible;
+}
+
+{{ id }}.gauge-background {
+  fill: {{ style.value_background }};
+  stroke: none;
+}
+
+{{ id }}.bg-lines {
+  stroke: {{ style.background }};
+  stroke-width: 2px;
 }

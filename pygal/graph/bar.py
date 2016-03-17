@@ -23,8 +23,9 @@ proportional to the values that they represent.
 """
 
 from __future__ import division
+
 from pygal.graph.graph import Graph
-from pygal.util import swap, ident, compute_scale, decorate, alter
+from pygal.util import alter, decorate, ident, swap
 
 
 class Bar(Graph):
@@ -33,11 +34,6 @@ class Bar(Graph):
 
     _series_margin = .06
     _serie_margin = .06
-
-    def __init__(self, *args, **kwargs):
-        """Bar chart creation"""
-        self._x_ranges = None
-        super(Bar, self).__init__(*args, **kwargs)
 
     def _bar(self, serie, parent, x, y, i, zero, secondary=False):
         """Internal bar drawing function"""
@@ -62,8 +58,43 @@ class Bar(Graph):
             parent, 'rect',
             x=x, y=y, rx=r, ry=r, width=width, height=height,
             class_='rect reactive tooltip-trigger'), serie.metadata.get(i))
+        return x, y, width, height
+
+    def _tooltip_and_print_values(
+            self, serie_node, serie, parent, i, val, metadata,
+            x, y, width, height):
         transpose = swap if self.horizontal else ident
-        return transpose((x + width / 2, y + height / 2))
+        x_center, y_center = transpose((x + width / 2, y + height / 2))
+        x_top, y_top = transpose((x + width, y + height))
+        x_bottom, y_bottom = transpose((x, y))
+        if self._dual:
+            v = serie.values[i][0]
+        else:
+            v = serie.values[i]
+        sign = -1 if v < self.zero else 1
+        self._tooltip_data(
+            parent, val, x_center, y_center, "centered",
+            self._get_x_label(i))
+
+        if self.print_values_position == 'top':
+            if self.horizontal:
+                x = x_bottom + sign * self.style.value_font_size / 2
+                y = y_center
+            else:
+                x = x_center
+                y = y_bottom - sign * self.style.value_font_size / 2
+        elif self.print_values_position == 'bottom':
+            if self.horizontal:
+                x = x_top + sign * self.style.value_font_size / 2
+                y = y_center
+            else:
+                x = x_center
+                y = y_top - sign * self.style.value_font_size / 2
+        else:
+            x = x_center
+            y = y_center
+        self._static_value(
+            serie_node, val, x, y, metadata, "centered")
 
     def bar(self, serie, rescale=False):
         """Draw a bar graph for a serie"""
@@ -78,18 +109,23 @@ class Bar(Graph):
             if None in (x, y) or (self.logarithmic and y <= 0):
                 continue
             metadata = serie.metadata.get(i)
+            val = self._format(serie, i)
 
             bar = decorate(
                 self.svg,
                 self.svg.node(bars, class_='bar'),
                 metadata)
-            val = self._format(serie.values[i])
 
-            x_center, y_center = self._bar(
+            x_, y_, width, height = self._bar(
                 serie, bar, x, y, i, self.zero, secondary=rescale)
-            self._tooltip_data(
-                bar, val, x_center, y_center, classes="centered")
-            self._static_value(serie_node, val, x_center, y_center)
+
+            self._confidence_interval(
+                serie_node['overlay'], x_ + width / 2, y_, serie.values[i],
+                metadata)
+
+            self._tooltip_and_print_values(
+                serie_node, serie, bar, i, val, metadata,
+                x_, y_, width, height)
 
     def _compute(self):
         """Compute y min and max and y scale and set labels"""
@@ -97,46 +133,13 @@ class Bar(Graph):
             self._box.ymin = min(self._min, self.zero)
         if self._max:
             self._box.ymax = max(self._max, self.zero)
-
-        x_pos = [
+        self._x_pos = [
             x / self._len for x in range(self._len + 1)
         ] if self._len > 1 else [0, 1]  # Center if only one value
 
-        self._points(x_pos)
+        self._points(self._x_pos)
 
-        y_pos = compute_scale(
-            self._box.ymin, self._box.ymax, self.logarithmic, self.order_min,
-            self.min_scale, self.max_scale
-        ) if not self.y_labels else list(map(float, self.y_labels))
-
-        self._x_labels = self.x_labels and list(zip(self.x_labels, [
-            (i + .5) / self._len for i in range(self._len)]))
-        self._y_labels = list(zip(map(self._format, y_pos), y_pos))
-
-    def _compute_secondary(self):
-        """Compute parameters for secondary series rendering"""
-        if self.secondary_series:
-            y_pos = list(zip(*self._y_labels))[1]
-            ymin = self._secondary_min
-            ymax = self._secondary_max
-
-            min_0_ratio = (self.zero - self._box.ymin) / self._box.height or 1
-            max_0_ratio = (self._box.ymax - self.zero) / self._box.height or 1
-
-            if ymax > self._box.ymax:
-                ymin = -(ymax - self.zero) * (1 / max_0_ratio - 1)
-            else:
-                ymax = (self.zero - ymin) * (1 / min_0_ratio - 1)
-
-            left_range = abs(self._box.ymax - self._box.ymin)
-            right_range = abs(ymax - ymin) or 1
-            self._scale = left_range / right_range
-            self._scale_diff = self._box.ymin
-            self._scale_min_2nd = ymin
-            self._y_2nd_labels = [
-                (self._format(self._box.xmin + y * right_range / left_range),
-                 y)
-                for y in y_pos]
+        self._x_pos = [(i + .5) / self._len for i in range(self._len)]
 
     def _plot(self):
         """Draw bars for series and secondary series"""

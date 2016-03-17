@@ -35,10 +35,9 @@ class VerticalPyramid(StackedBar):
 
     _adapters = [positive]
 
-    def _format(self, value):
-        """Return the value formatter for this graph here its absolute value"""
-        value = value and abs(value)
-        return super(VerticalPyramid, self)._format(value)
+    def _value_format(self, value):
+        """Format value for dual value display."""
+        return super(VerticalPyramid, self)._value_format(value and abs(value))
 
     def _get_separated_values(self, secondary=False):
         """Separate values between odd and even series stacked"""
@@ -55,9 +54,19 @@ class VerticalPyramid(StackedBar):
 
     def _compute_box(self, positive_vals, negative_vals):
         """Compute Y min and max"""
-        self._box.ymax = max(max(positive_vals or [self.zero]),
-                             max(negative_vals or [self.zero]))
-        self._box.ymin = - self._box.ymax
+        max_ = max(
+            max(positive_vals or [self.zero]),
+            max(negative_vals or [self.zero]))
+
+        if self.range and self.range[0] is not None:
+            self._box.ymin = self.range[0]
+        else:
+            self._box.ymin = - max_
+
+        if self.range and self.range[1] is not None:
+            self._box.ymax = self.range[1]
+        else:
+            self._box.ymax = max_
 
     def _pre_compute_secondary(self, positive_vals, negative_vals):
         """Compute secondary y min and max"""

@@ -55,6 +55,19 @@ The color key set the fill and the stroke style. You can also set the css style 
   ])
 
 
+Value formatting
+~~~~~~~~~~~~~~~~
+
+You can add a `formatter` metadata for a specific value.
+
+
+.. pygal-code::
+
+  chart = pygal.Bar(print_values=True, value_formatter=lambda x: '{}$'.format(x))
+  chart.add('bar', [.0002, .0005, .00035], formatter=lambda x: '<%s>' % x)
+  chart.add('bar', [.0004, {'value': .0009, 'formatter': lambda x: '«%s»' % x}, .001])
+
+
 Node attributes
 ---------------
 
@@ -142,3 +155,80 @@ You can specify a dictionary to xlink with all links attributes:
       'target': '_self'}
     }])
 
+Legend
+~~~~~~
+
+Finally legends can be link with the same mechanism:
+
+
+.. pygal-code::
+
+  chart = pygal.Bar()
+  chart.add({
+    'title': 'First',
+    'tooltip': 'It is the first actually',
+    'xlink': {'href': 'http://en.wikipedia.org/wiki/First'}
+  }, [{
+    'value': 2,
+    'label': 'This is the first',
+    'xlink': {'href': 'http://en.wikipedia.org/wiki/First'}
+  }])
+
+  chart.add({
+    'title': 'Second',
+    'xlink': {
+      'href': 'http://en.wikipedia.org/wiki/Second',
+      'target': '_top'
+    }
+  }, [{
+    'value': 4,
+    'label': 'This is the second',
+    'xlink': {
+      'href': 'http://en.wikipedia.org/wiki/Second',
+      'target': '_top'}
+  }])
+
+  chart.add('Third', 7)
+
+  chart.add({
+    'title': 'Fourth',
+    'xlink': {
+      'href': 'http://en.wikipedia.org/wiki/Fourth',
+      'target': '_blank'
+    }
+  }, [{
+    'value': 5,
+    'xlink': {
+      'href': 'http://en.wikipedia.org/wiki/Fourth',
+      'target': '_blank'}
+  }])
+
+  chart.add({
+    'title': 'Fifth',
+    'xlink': {
+      'href': 'http://en.wikipedia.org/wiki/Fifth',
+      'target': '_self'
+    }
+  }, [{
+    'value': 3,
+    'label': 'This is the fifth',
+    'xlink': {
+      'href': 'http://en.wikipedia.org/wiki/Fifth',
+      'target': '_self'}
+  }])
+
+
+Confidence Intervals
+~~~~~~~~~~~~~~~~~~~~
+
+.. pygal-code::
+
+  chart = pygal.Bar(style=pygal.style.styles['default'](ci_colors=(
+    'black', 'blue')))
+  chart.add('First', [{'value': 2, 'ci': {
+    'type': 'continuous', 'sample_size': 50, 'stddev': .5, 'confidence': .95}}])
+  chart.add('Second', [{'value': 4, 'ci': {'low': 2, 'high': 5}}])
+  chart.add('Third', 7)
+  chart.add('Fourth', [{'value': 5}])
+  chart.add('Fifth', [{'value': 3, 'ci': {
+    'type': 'dichotomous', 'sample_size': 1000}}])

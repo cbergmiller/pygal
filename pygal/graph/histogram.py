@@ -22,18 +22,21 @@ as bars of varying width.
 """
 
 from __future__ import division
-from pygal._compat import is_list_like
-from pygal.graph.graph import Graph
-from pygal.util import (
-    swap, ident, compute_scale, decorate, cached_property, alter)
+
+from pygal.graph.dual import Dual
+from pygal.graph.bar import Bar
+from pygal.util import alter, cached_property, decorate
 
 
-class Histogram(Graph):
+class Histogram(Dual, Bar):
 
     """Histogram chart class"""
-
-    _dual = True
     _series_margin = 0
+
+    @cached_property
+    def _values(self):
+        """Getter for secondary series values (flattened)"""
+        return self.yvals
 
     @cached_property
     def _secondary_values(self):
@@ -75,8 +78,7 @@ class Histogram(Graph):
             parent, 'rect',
             x=x, y=y, rx=r, ry=r, width=width, height=height,
             class_='rect reactive tooltip-trigger'), serie.metadata.get(i))
-        transpose = swap if self.horizontal else ident
-        return transpose((x + width / 2, y + height / 2))
+        return x, y, width, height
 
     def bar(self, serie, rescale=False):
         """Draw a bar graph for a serie"""
@@ -93,13 +95,12 @@ class Histogram(Graph):
                 self.svg,
                 self.svg.node(bars, class_='histbar'),
                 metadata)
-            val = self._format(serie.values[i][0])
+            val = self._format(serie, i)
 
-            x_center, y_center = self._bar(
+            bounds = self._bar(
                 serie, bar, x0, x1, y, i, self.zero, secondary=rescale)
-            self._tooltip_data(
-                bar, val, x_center, y_center, classes="centered")
-            self._static_value(serie_node, val, x_center, y_center)
+            self._tooltip_and_print_values(
+                serie_node, serie, bar, i, val, metadata, *bounds)
 
     def _compute(self):
         """Compute x/y min and max and x/y scale and set labels"""
@@ -125,21 +126,8 @@ class Histogram(Graph):
         if yrng:
             self._box.ymin, self._box.ymax = ymin, ymax
 
-        x_pos = compute_scale(
-            self._box.xmin, self._box.xmax, self.logarithmic, self.order_min,
-            self.min_scale, self.max_scale
-        ) if not self.x_labels else list(map(float, self.x_labels))
-        y_pos = compute_scale(
-            self._box.ymin, self._box.ymax, self.logarithmic, self.order_min,
-            self.min_scale, self.max_scale
-        ) if not self.y_labels else list(map(float, self.y_labels))
+        if self.range and self.range[0] is not None:
+            self._box.ymin = self.range[0]
 
-        self._x_labels = list(zip(map(self._format, x_pos), x_pos))
-        self._y_labels = list(zip(map(self._format, y_pos), y_pos))
-
-    def _plot(self):
-        """Draw bars for series and secondary series"""
-        for serie in self.series:
-            self.bar(serie)
-        for serie in self.secondary_series:
-            self.bar(serie, True)
+        if self.range and self.range[1] is not None:
+            self._box.ymax = self.range[1]

@@ -23,10 +23,11 @@ Different types are available throught the box_mode option
 """
 
 from __future__ import division
-from pygal.graph.graph import Graph
-from pygal.util import compute_scale, decorate, alter
-from pygal._compat import is_list_like
+
 from bisect import bisect_left, bisect_right
+
+from pygal.graph.graph import Graph
+from pygal.util import alter, decorate
 
 
 class Box(Graph):
@@ -42,25 +43,25 @@ class Box(Graph):
 
     _series_margin = .06
 
-    @property
-    def _format(self):
-        """Return the value formatter for this graph"""
-        sup = super(Box, self)._format
-
-        def format_maybe_quartile(x):
-            if is_list_like(x):
-                if self.box_mode == "extremes":
-                    return 'Min: %s Q1: %s Q2: %s Q3: %s Max: %s' \
-                        % tuple(map(sup, x[1:6]))
-                elif self.box_mode in ["tukey", "stdev", "pstdev"]:
-                    return 'Min: %s Lower Whisker: %s Q1: %s Q2: %s Q3: %s '\
-                        'Upper Whisker: %s Max: %s' % tuple(map(sup, x))
-                elif self.box_mode == '1.5IQR':
-                    # 1.5IQR mode
-                    return 'Q1: %s Q2: %s Q3: %s' % tuple(map(sup, x[2:5]))
-            else:
-                return sup(x)
-        return format_maybe_quartile
+    def _value_format(self, value, serie):
+        """
+        Format value for dual value display.
+        """
+        if self.box_mode == "extremes":
+            return (
+                    'Min: %s\nQ1 : %s\nQ2 : %s\nQ3 : %s\nMax: %s' %
+                    tuple(map(self._y_format, serie.points[1:6])))
+        elif self.box_mode in ["tukey", "stdev", "pstdev"]:
+            return (
+                    'Min: %s\nLower Whisker: %s\nQ1: %s\nQ2: %s\nQ3: %s\n'
+                    'Upper Whisker: %s\nMax: %s' % tuple(map(
+                        self._y_format, serie.points)))
+        elif self.box_mode == '1.5IQR':
+            # 1.5IQR mode
+            return 'Q1: %s\nQ2: %s\nQ3: %s' % tuple(map(
+                self._y_format, serie.points[2:5]))
+        else:
+            return self._y_format(serie.points)
 
     def _compute(self):
         """
@@ -68,28 +69,16 @@ class Box(Graph):
         within the rendering process
         """
         for serie in self.series:
-            serie.values, serie.outliers = \
+            serie.points, serie.outliers = \
                 self._box_points(serie.values, self.box_mode)
+
+        self._x_pos = [
+            (i + .5) / self._order for i in range(self._order)]
 
         if self._min:
             self._box.ymin = min(self._min, self.zero)
         if self._max:
             self._box.ymax = max(self._max, self.zero)
-
-        x_pos = [
-            x / self._len for x in range(self._len + 1)
-        ] if self._len > 1 else [0, 1]  # Center if only one value
-
-        self._points(x_pos)
-
-        y_pos = compute_scale(
-            self._box.ymin, self._box.ymax, self.logarithmic, self.order_min,
-            self.min_scale, self.max_scale
-        ) if not self.y_labels else list(map(float, self.y_labels))
-
-        self._x_labels = self.x_labels and list(zip(self.x_labels, [
-            (i + .5) / self._order for i in range(self._order)]))
-        self._y_labels = list(zip(map(self._format, y_pos), y_pos))
 
     def _plot(self):
         """Plot the series data"""
@@ -115,12 +104,14 @@ class Box(Graph):
             self.svg,
             self.svg.node(boxes, class_='box'),
             metadata)
-        val = self._format(serie.values)
+
+        val = self._format(serie, 0)
 
         x_center, y_center = self._draw_box(
-            box, serie.values[1:6], serie.outliers, serie.index, metadata)
-        self._tooltip_data(box, val, x_center, y_center, classes="centered")
-        self._static_value(serie_node, val, x_center, y_center)
+            box, serie.points[1:6], serie.outliers, serie.index, metadata)
+        self._tooltip_data(box, val, x_center, y_center, "centered",
+                           self._get_x_label(serie.index))
+        self._static_value(serie_node, val, x_center, y_center, metadata)
 
     def _draw_box(self, parent_node, quartiles, outliers, box_index, metadata):
         """
@@ -186,12 +177,12 @@ class Box(Graph):
     @staticmethod
     def _box_points(values, mode='extremes'):
         """
-        Default mode: (mode='1.5IQR' or unset)
-            Return a 7-tuple of min, Q1 - 1.5 * IQR, Q1, Median, Q3,
-        Q3 + 1.5 * IQR and max for a list of numeric values.
-        Extremes mode: (mode='extremes')
+        Default mode: (mode='extremes' or unset)
             Return a 7-tuple of 2x minimum, Q1, Median, Q3,
         and 2x maximum for a list of numeric values.
+        1.5IQR mode: (mode='1.5IQR')
+            Return a 7-tuple of min, Q1 - 1.5 * IQR, Q1, Median, Q3,
+        Q3 + 1.5 * IQR and max for a list of numeric values.
         Tukey mode: (mode='tukey')
             Return a 7-tuple of min, q[0..4], max and a list of outliers
         Outliers are considered values x: x < q1 - IQR or x > q3 + IQR
@@ -201,7 +192,6 @@ class Box(Graph):
         SDp mode: (mode='pstdev')
             Return a 7-tuple of min, q[0..4], max and a list of outliers
         Outliers are considered values x: x < q2 - SDp or x > q2 + SDp
-
 
         The iterator values may include None values.
 

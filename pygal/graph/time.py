@@ -22,10 +22,11 @@ XY time extensions: handle convertion of date, time, datetime, timedelta
 into float for xy plot and back to their type for display
 """
 
+from datetime import date, datetime, time, timedelta
+
+from pygal._compat import is_str, timestamp, total_seconds
 from pygal.adapters import positive
 from pygal.graph.xy import XY
-from datetime import datetime, date, time, timedelta
-from pygal._compat import timestamp, total_seconds
 
 
 def datetime_to_timestamp(x):
@@ -70,6 +71,8 @@ def time_to_seconds(x):
             ((x.hour * 60) + x.minute) * 60 + x.second
         ) * 10 ** 6 + x.microsecond) / 10 ** 6
 
+    if is_str(x):
+        return x
     # Clamp to valid time
     return x and max(0, min(x, 24 * 3600 - 10 ** -6))
 
@@ -98,9 +101,7 @@ class DateTimeLine(XY):
         """Return the value formatter for this graph"""
         def datetime_to_str(x):
             dt = datetime.utcfromtimestamp(x)
-            if self.x_value_formatter:
-                return self.x_value_formatter(dt)
-            return dt.isoformat()
+            return self.x_value_formatter(dt)
         return datetime_to_str
 
 
@@ -113,9 +114,7 @@ class DateLine(DateTimeLine):
         """Return the value formatter for this graph"""
         def date_to_str(x):
             d = date.fromtimestamp(x)
-            if self.x_value_formatter:
-                return self.x_value_formatter(d)
-            return d.isoformat()
+            return self.x_value_formatter(d)
         return date_to_str
 
 
@@ -130,9 +129,7 @@ class TimeLine(DateTimeLine):
         """Return the value formatter for this graph"""
         def date_to_str(x):
             t = seconds_to_time(x)
-            if self.x_value_formatter:
-                return self.x_value_formatter(t)
-            return t.isoformat()
+            return self.x_value_formatter(t)
         return date_to_str
 
 
@@ -147,8 +144,6 @@ class TimeDeltaLine(XY):
         """Return the value formatter for this graph"""
         def timedelta_to_str(x):
             td = timedelta(seconds=x)
-            if self.x_value_formatter:
-                return self.x_value_formatter(td)
-            return str(td)
+            return self.x_value_formatter(td)
 
         return timedelta_to_str

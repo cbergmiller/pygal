@@ -20,7 +20,8 @@
 """Projection and bounding helpers"""
 
 from __future__ import division
-from math import sin, cos, log10, pi
+
+from math import cos, log10, pi, sin
 
 
 class Margin(object):
@@ -78,7 +79,7 @@ class Box(object):
     @xmin.setter
     def xmin(self, value):
         """X minimum setter"""
-        if value:
+        if value is not None:
             self._xmin = value
 
     @property
@@ -89,7 +90,7 @@ class Box(object):
     @ymin.setter
     def ymin(self, value):
         """Y minimum setter"""
-        if value:
+        if value is not None:
             self._ymin = value
 
     @property
@@ -100,7 +101,7 @@ class Box(object):
     @xmax.setter
     def xmax(self, value):
         """X maximum setter"""
-        if value:
+        if value is not None:
             self._xmax = value
 
     @property
@@ -111,7 +112,7 @@ class Box(object):
     @ymax.setter
     def ymax(self, value):
         """Y maximum setter"""
-        if value:
+        if value or self.ymin:
             self._ymax = value
 
     @property
@@ -134,8 +135,8 @@ class Box(object):
         if not self.width:
             self.xmax = self.xmin + 1
         if not self.height:
-            self.ymin -= .5
-            self.ymax = self.ymin + 1
+            self.ymin /= 2
+            self.ymax += self.ymin
         xmargin = self.margin * self.width
         self.xmin -= xmargin
         self.xmax += xmargin
@@ -367,8 +368,8 @@ class XLogView(View):
         if x is None or x <= 0 or self.log10_xmax - self.log10_xmin == 0:
             return None
         return (self.width *
-                (log10(x) - self.log10_xmin)
-                / (self.log10_xmax - self.log10_xmin))
+                (log10(x) - self.log10_xmin) /
+                (self.log10_xmax - self.log10_xmin))
 
 
 class XYLogView(XLogView, LogView):

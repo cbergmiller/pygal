@@ -24,9 +24,10 @@ https://github.com/Kozea/pygal_maps_world
 """
 
 from __future__ import division
-from pygal.graph.graph import Graph
-from pygal.util import cut, cached_property, decorate
+
 from pygal.etree import etree
+from pygal.graph.graph import Graph
+from pygal.util import alter, cached_property, cut, decorate
 
 
 class BaseMap(Graph):
@@ -50,6 +51,14 @@ class BaseMap(Graph):
     def adapt_code(self, area_code):
         """Hook to change the area code"""
         return area_code
+
+    def _value_format(self, value):
+        """
+        Format value for map value display.
+        """
+        return '%s: %s' % (
+             self.area_names.get(self.adapt_code(value[0]), '?'),
+             self._y_format(value[1]))
 
     def _plot(self):
         """Insert a map in the chart and apply data on it"""
@@ -88,10 +97,13 @@ class BaseMap(Graph):
                 for area in areae:
                     cls = area.get('class', '').split(' ')
                     cls.append('color-%d' % i)
+                    cls.append('serie-%d' % i)
+                    cls.append('series')
                     area.set('class', ' '.join(cls))
-                    area.set('style', 'fill-opacity: %f' % (ratio))
+                    area.set('style', 'fill-opacity: %f' % ratio)
 
                     metadata = serie.metadata.get(j)
+
                     if metadata:
                         node = decorate(self.svg, area, metadata)
                         if node != area:
@@ -104,16 +116,21 @@ class BaseMap(Graph):
                                 node.append(area)
                                 g.insert(index, node)
 
-                    last_node = len(area) > 0 and area[-1]
-                    if last_node is not None and last_node.tag == 'title':
-                        title_node = last_node
-                        text = title_node.text + '\n'
-                    else:
-                        title_node = self.svg.node(area, 'title')
-                        text = ''
+                    for node in area:
+                        cls = node.get('class', '').split(' ')
+                        cls.append('reactive')
+                        cls.append('tooltip-trigger')
+                        cls.append('map-area')
+                        node.set('class', ' '.join(cls))
+                        alter(node, metadata)
 
-                    title_node.text = text + '[%s] %s: %s' % (
-                        serie.title,
-                        self.area_names[area_code], self._format(value))
+                    val = self._format(serie, j)
+                    self._tooltip_data(area, val, 0, 0, 'auto')
 
         self.nodes['plot'].append(map)
+
+    def _compute_x_labels(self):
+        pass
+
+    def _compute_y_labels(self):
+        pass

@@ -19,11 +19,14 @@
 """Config module holding all options and their default values."""
 
 from copy import deepcopy
-from pygal.style import Style, DefaultStyle
+
 from pygal.interpolate import INTERPOLATIONS
+from pygal.style import DefaultStyle, Style
+from pygal import formatters
 
 
 CONFIG_ITEMS = []
+callable = type(lambda: 1)
 
 
 class Key(object):
@@ -217,6 +220,15 @@ class CommonConfig(BaseConfig):
     inner_radius = Key(
         0, float, "Look", "Piechart inner radius (donut), must be <.9")
 
+    allow_interruptions = Key(
+        False, bool, "Look", "Break lines on None values")
+
+    formatter = Key(
+        None, callable, "Value",
+        "A function to convert raw value to strings for this chart or serie",
+        "Default to value_formatter in most charts, it depends on dual charts."
+        "(Can be overriden by value with the formatter metadata.)")
+
 
 class Config(CommonConfig):
 
@@ -229,6 +241,12 @@ class Config(CommonConfig):
         ('file://style.css', 'file://graph.css'), list, "Style",
         "List of css file",
         "It can be any uri from file:///tmp/style.css to //domain/style.css",
+        str)
+
+    defs = Key(
+        [],
+        list, "Misc", "Extraneous defs to be inserted in svg",
+        "Useful for adding gradients / patterns…",
         str)
 
     # Look #
@@ -381,18 +399,14 @@ class Config(CommonConfig):
         "'x' (default), 'y' or 'either'")
 
     # Value #
-    human_readable = Key(
-        False, bool, "Value", "Display values in human readable format",
-        "(ie: 12.4M)")
-
     x_value_formatter = Key(
-        None, type(lambda: 1), "Value",
+        formatters.default, callable, "Value",
         "A function to convert abscissa numeric value to strings "
         "(used in XY and Date charts)")
 
     value_formatter = Key(
-        None, type(lambda: 1), "Value",
-        "A function to convert numeric value to strings")
+        formatters.default, callable, "Value",
+        "A function to convert ordinate numeric value to strings")
 
     logarithmic = Key(
         False, bool, "Value", "Display values in logarithmic scale")
@@ -455,11 +469,24 @@ class Config(CommonConfig):
 
     print_values = Key(
         False, bool,
-        "Text", "Print values when graph is in non interactive mode")
+        "Text", "Display values as text over plot")
+
+    dynamic_print_values = Key(
+        False, bool,
+        "Text", "Show values only on hover")
+
+    print_values_position = Key(
+        'center', str,
+        "Text", "Customize position of `print_values`. "
+        "(For bars: `top`, `center` or `bottom`)")
 
     print_zeroes = Key(
+        True, bool,
+        "Text", "Display zero values as well")
+
+    print_labels = Key(
         False, bool,
-        "Text", "Print zeroes when graph is in non interactive mode")
+        "Text", "Display value labels")
 
     truncate_legend = Key(
         None, int, "Text",

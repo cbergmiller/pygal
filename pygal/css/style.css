@@ -90,14 +90,23 @@
   fill: {{ style.foreground_strong }};
 }
 
+
 {{ id }}.reactive {
   fill-opacity: {{ style.opacity }};
 }
 
+{{ id }}.ci {
+    stroke: {{ style.foreground }};
+}
+
 {{ id }}.reactive.active,
 {{ id }}.active .reactive {
-  fill-opacity:  {{ style.opacity_hover }};
+  fill-opacity: {{ style.opacity_hover }};
   stroke-width: 4;
+}
+
+{{ id }}.ci .reactive.active {
+  stroke-width: 1.5;
 }
 
 {{ id }}.series text {
@@ -130,27 +139,33 @@
   fill: {{ style.foreground_strong }};
 }
 
+{{ id }}.tooltip .xlink {
+  font-size: .5em;
+  text-decoration: underline;
+}
+
 {{ id }}.tooltip .value {
-  font-size: 2em;
+  font-size: 1.5em;
+}
+
+{{ id }}.bound {
+  font-size: .5em;
+}
+
+{{ id }}.max-value {
+  font-size: .75em;
+  fill: {{ style.foreground_subtle }};
 }
 
 {{ id }}.map-element {
-  fill: {{ style.foreground }};
+  fill: {{ style.plot_background }};
   stroke: {{ style.foreground_subtle }} !important;
-  opacity: .9;
-  stroke-width: 3;
-  -webkit-transition: opacity {{ style.transition }};
-  -moz-transition: opacity {{ style.transition }};
-  transition: opacity {{ style.transition }};
 }
 
-{{ id }}.map-element:hover {
-  opacity: 1;
-  stroke-width: 10;
+{{ id }}.map-element .reactive {
+  fill-opacity: inherit;
 }
 
 {{ colors }}
 
 {{ strokes }}
-
-

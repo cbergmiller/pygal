@@ -22,10 +22,12 @@ It can be made as a donut or a half pie.
 """
 
 from __future__ import division
-from pygal.util import decorate, alter
-from pygal.graph.graph import Graph
-from pygal.adapters import positive, none_to_zero
+
 from math import pi
+
+from pygal.adapters import none_to_zero, positive
+from pygal.graph.graph import Graph
+from pygal.util import alter, decorate
 
 
 class Pie(Graph):
@@ -34,15 +36,6 @@ class Pie(Graph):
 
     _adapters = [positive, none_to_zero]
 
-    @property
-    def _format(self):
-        """Return the value formatter for this graph"""
-        def percentage_formatter(y, self=self):
-            total = sum(map(sum, map(lambda x: x.values, self.series)))
-            perc = y/total
-            return '{0:.2%}'.format(perc)
-        return self.value_formatter or percentage_formatter
-
     def slice(self, serie, start_angle, total):
         """Make a serie slice"""
         serie_node = self.svg.serie(serie)
@@ -50,7 +43,6 @@ class Pie(Graph):
 
         slices = self.svg.node(serie_node['plot'], class_="slices")
         serie_angle = 0
-        total_perc = 0
         original_start_angle = start_angle
         if self.half_pie:
             center = ((self.width - self.margin_box.x) / 2.,
@@ -67,7 +59,7 @@ class Pie(Graph):
             else:
                 angle = 2 * pi * perc
             serie_angle += angle
-            val = self._format(val)
+            val = self._format(serie, i)
             metadata = serie.metadata.get(i)
             slice_ = decorate(
                 self.svg,
@@ -82,17 +74,22 @@ class Pie(Graph):
 
             alter(self.svg.slice(
                 serie_node, slice_, big_radius, small_radius,
-                angle, start_angle, center, val), metadata)
+                angle, start_angle, center, val, i, metadata), metadata)
             start_angle += angle
-            total_perc += perc
 
         if dual:
-            val = self._format(total_perc*total)
+            val = self._serie_format(serie, sum(serie.values))
             self.svg.slice(serie_node,
                            self.svg.node(slices, class_="big_slice"),
                            radius * .9, 0, serie_angle,
-                           original_start_angle, center, val)
+                           original_start_angle, center, val, i, metadata)
         return serie_angle
+
+    def _compute_x_labels(self):
+        pass
+
+    def _compute_y_labels(self):
+        pass
 
     def _plot(self):
         """Draw all the serie slices"""

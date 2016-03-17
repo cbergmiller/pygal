@@ -34,6 +34,9 @@ def normalize_float(f):
 
 def rgb_to_hsl(r, g, b):
     """Convert a color in r, g, b to a color in h, s, l"""
+    r = r or 0
+    g = g or 0
+    b = b or 0
     r /= 255
     g /= 255
     b /= 255
@@ -126,25 +129,33 @@ def unparse_color(r, g, b, a, type):
     if type == '#rgb':
         # Don't lose precision on rgb shortcut
         if r % 17 == 0 and g % 17 == 0 and b % 17 == 0:
-            return '#%x%x%x' % (r / 17, g / 17, b / 17)
+            return '#%x%x%x' % (int(r / 17), int(g / 17), int(b / 17))
         type = '#rrggbb'
 
     if type == '#rgba':
         if r % 17 == 0 and g % 17 == 0 and b % 17 == 0:
-            return '#%x%x%x%x' % (r / 17, g / 17, b / 17, a * 15)
+            return '#%x%x%x%x' % (int(r / 17), int(g / 17), int(b / 17),
+                                  int(a * 15))
         type = '#rrggbbaa'
 
     if type == '#rrggbb':
         return '#%02x%02x%02x' % (r, g, b)
 
     if type == '#rrggbbaa':
-        return '#%02x%02x%02x%02x' % (r, g, b, a * 255)
+        return '#%02x%02x%02x%02x' % (r, g, b, int(a * 255))
 
     if type == 'rgb':
         return 'rgb(%d, %d, %d)' % (r, g, b)
 
     if type == 'rgba':
         return 'rgba(%d, %d, %d, %g)' % (r, g, b, a)
+
+
+def is_foreground_light(color):
+    """
+    Determine if the background color need a light or dark foreground color
+    """
+    return rgb_to_hsl(*parse_color(color)[:3])[2] < 17.9
 
 
 _clamp = lambda x: max(0, min(100, x))

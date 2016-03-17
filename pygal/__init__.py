@@ -24,17 +24,25 @@ and the maps extensions namespace module.
 
 """
 
-__version__ = '1.9.9'
+__version__ = '2.1.1'
+
+import pkg_resources
+import sys
+import traceback
+import warnings
 
 from pygal.graph.bar import Bar
 from pygal.graph.box import Box
 from pygal.graph.dot import Dot
 from pygal.graph.funnel import Funnel
 from pygal.graph.gauge import Gauge
+from pygal.graph.solidgauge import SolidGauge
 from pygal.graph.histogram import Histogram
 from pygal.graph.horizontalbar import HorizontalBar
 from pygal.graph.horizontalstackedbar import HorizontalStackedBar
 from pygal.graph.line import Line
+from pygal.graph.horizontalline import HorizontalLine
+from pygal.graph.horizontalstackedline import HorizontalStackedLine
 from pygal.graph.pie import Pie
 from pygal.graph.pyramid import Pyramid, VerticalPyramid
 from pygal.graph.radar import Radar
@@ -46,10 +54,6 @@ from pygal.graph.xy import XY
 from pygal.graph.graph import Graph
 from pygal.config import Config
 from pygal import maps
-import pkg_resources
-import sys
-import traceback
-import warnings
 
 
 CHARTS_BY_NAME = dict(

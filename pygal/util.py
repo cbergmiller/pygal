@@ -20,32 +20,18 @@
 """Various utility functions"""
 
 from __future__ import division
-from pygal._compat import u, is_list_like, to_unicode
+
 import re
 from decimal import Decimal
-from math import floor, pi, log, log10, ceil
-from itertools import cycle
-ORDERS = u("yzafpnµm kMGTPEZY")
+
+from math import ceil, floor, log10, pi, cos, sin
+
+from pygal._compat import to_unicode, u
 
 
 def float_format(number):
     """Format a float to a precision of 3, without zeroes or dots"""
     return ("%.3f" % number).rstrip('0').rstrip('.')
-
-
-def humanize(number):
-    """Format a number to engineer scale"""
-    if is_list_like(number):
-        return', '.join(map(humanize, number))
-    if number is None:
-        return u('∅')
-    order = number and int(floor(log(abs(number)) / log(1000)))
-    human_readable = ORDERS.split(" ")[int(order > 0)]
-    if order == 0 or order > len(human_readable):
-        return float_format(number / (1000 ** int(order)))
-    return (
-        float_format(number / (1000 ** int(order))) +
-        human_readable[int(order) - int(order > 0)])
 
 
 def majorize(values):
@@ -215,13 +201,7 @@ def get_text_box(text, fs):
 
 def get_texts_box(texts, fs):
     """Approximation of multiple texts bounds"""
-    def get_text_title(texts):
-        for text in texts:
-            if isinstance(text, dict):
-                yield text['title']
-            else:
-                yield text
-    max_len = max(map(len, get_text_title(texts)))
+    max_len = max(map(len, texts))
     return (fs, text_len(max_len, fs))
 
 
@@ -234,6 +214,12 @@ def decorate(svg, node, metadata):
         if not isinstance(xlink, dict):
             xlink = {'href': xlink, 'target': '_blank'}
         node = svg.node(node, 'a', **xlink)
+        svg.node(node, 'desc', class_='xlink').text = to_unicode(
+            xlink.get('href'))
+
+    if 'tooltip' in metadata:
+        svg.node(node, 'title').text = to_unicode(
+            metadata['tooltip'])
 
     if 'color' in metadata:
         color = metadata.pop('color')
@@ -246,7 +232,6 @@ def decorate(svg, node, metadata):
     if 'label' in metadata:
         svg.node(node, 'desc', class_='label').text = to_unicode(
             metadata['label'])
-
     return node
 
 
@@ -352,3 +337,30 @@ def split_title(title, width, title_fs):
             title_line = title_line[i:].strip()
         titles.append(title_line)
     return titles
+
+
+def filter_kwargs(fun, kwargs):
+    if not hasattr(fun, '__code__'):
+        return {}
+    args = fun.__code__.co_varnames[1:]
+    return dict((k, v) for k, v in kwargs.items() if k in args)
+
+
+def coord_project(rho, alpha):
+    return rho * sin(-alpha), rho * cos(-alpha)
+
+
+def coord_diff(x, y):
+    return (x[0] - y[0], x[1] - y[1])
+
+
+def coord_format(x):
+    return '%f %f' % x
+
+
+def coord_dual(r):
+    return coord_format((r, r))
+
+
+def coord_abs_project(center, rho, theta):
+    return coord_format(coord_diff(center, coord_project(rho, theta)))

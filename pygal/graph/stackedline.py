@@ -23,8 +23,9 @@ on top of the others. Used along fill=True option.
 """
 
 from __future__ import division
-from pygal.graph.line import Line
+
 from pygal.adapters import none_to_zero
+from pygal.graph.line import Line
 
 
 class StackedLine(Line):
@@ -37,6 +38,22 @@ class StackedLine(Line):
         """Custom variable initialization"""
         self._previous_line = None
         super(StackedLine, self).__init__(*args, **kwargs)
+
+    def _value_format(self, value, serie, index):
+        """
+        Display value and cumulation
+        """
+        sum_ = serie.points[index][1]
+        if serie in self.series and (
+                self.stack_from_top and
+                self.series.index(serie) == self._order - 1 or
+                not self.stack_from_top and
+                self.series.index(serie) == 0):
+            return super(StackedLine, self)._value_format(value)
+        return '%s (+%s)' % (
+            self._y_format(sum_),
+            self._y_format(value)
+        )
 
     def _fill(self, values):
         """Add extra values to fill the line"""

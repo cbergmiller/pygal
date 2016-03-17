@@ -20,19 +20,19 @@
 """Base for pygal charts"""
 
 from __future__ import division
-from pygal._compat import is_list_like
-from pygal.view import Margin, Box
-from pygal.config import Config
-from pygal.state import State
-from pygal.util import compose, ident
-from pygal.svg import Svg
-from pygal.serie import Serie
-from pygal.config import SerieConfig
-from pygal.adapters import (
-    not_zero, positive, decimal_to_float)
+
+import os
 from functools import reduce
 from uuid import uuid4
-import os
+
+from pygal._compat import is_list_like
+from pygal.adapters import decimal_to_float, not_zero, positive
+from pygal.config import Config, SerieConfig
+from pygal.serie import Serie
+from pygal.state import State
+from pygal.svg import Svg
+from pygal.util import compose, ident
+from pygal.view import Box, Margin
 
 
 class BaseGraph(object):
@@ -82,6 +82,12 @@ class BaseGraph(object):
         if self.zero == 0 and isinstance(self, BaseMap):
             self.zero = 1
 
+        if self.x_label_rotation:
+            self.x_label_rotation %= 360
+
+        if self.y_label_rotation:
+            self.y_label_rotation %= 360
+
         for key in ('x_labels', 'y_labels'):
             if getattr(self, key):
                 setattr(self, key, list(getattr(self, key)))
@@ -95,17 +101,11 @@ class BaseGraph(object):
                     adapters.remove(fun)
             adapters = adapters + [positive, not_zero]
         adapters = adapters + [decimal_to_float]
-        adapter = reduce(compose, adapters) if not self.strict else ident
 
-        if adapter and self.y_labels:
-            self.y_labels = list(map(adapter, self.y_labels))
-
-        x_adapter = reduce(
+        self._adapt = reduce(compose, adapters) if not self.strict else ident
+        self._x_adapt = reduce(
             compose, self._x_adapters) if not self.strict and getattr(
                 self, '_x_adapters', None) else ident
-
-        if x_adapter and self.x_labels:
-            self.x_labels = list(map(x_adapter, self.x_labels))
 
         series = []
 
@@ -149,20 +149,24 @@ class BaseGraph(object):
                         value = (None, None, None)
                     elif not is_list_like(value):
                         value = (value, self.zero, self.zero)
-                    value = list(map(adapter, value))
+                    elif len(value) == 2:
+                        value = (1, value[0], value[1])
+                    value = list(map(self._adapt, value))
                 elif self._dual:
                     if value is None:
                         value = (None, None)
                     elif not is_list_like(value):
                         value = (value, self.zero)
-                    if x_adapter:
-                        value = (x_adapter(value[0]), adapter(value[1]))
+                    if self._x_adapt:
+                        value = (
+                            self._x_adapt(value[0]),
+                            self._adapt(value[1]))
                     if isinstance(self, BaseMap):
-                        value = (adapter(value[0]), value[1])
+                        value = (self._adapt(value[0]), value[1])
                     else:
-                        value = list(map(adapter, value))
+                        value = list(map(self._adapt, value))
                 else:
-                    value = adapter(value)
+                    value = self._adapt(value)
 
                 values.append(value)
             serie_config = SerieConfig()

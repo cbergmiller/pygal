@@ -18,10 +18,11 @@
 # along with pygal. If not, see <http://www.gnu.org/licenses/>.
 """pygal public api functions"""
 
-import io
-from pygal._compat import u, is_list_like
-from pygal.graph.base import BaseGraph
 import base64
+import io
+
+from pygal._compat import is_list_like, u
+from pygal.graph.base import BaseGraph
 
 
 class PublicApi(BaseGraph):
@@ -51,9 +52,9 @@ class PublicApi(BaseGraph):
         self.teardown()
         return svg
 
-    def render_tree(self):
+    def render_tree(self, **kwargs):
         """Render the graph, and return (l)xml etree"""
-        self.setup()
+        self.setup(**kwargs)
         svg = self.svg.root
         for f in self.xml_filters:
             svg = f(svg)
@@ -69,10 +70,10 @@ class PublicApi(BaseGraph):
             raise ImportError('You must install lxml to use render table')
         return Table(self).render(**kwargs)
 
-    def render_pyquery(self):
+    def render_pyquery(self, **kwargs):
         """Render the graph, and return a pyquery wrapped tree"""
         from pyquery import PyQuery as pq
-        return pq(self.render(), parser='html')
+        return pq(self.render(**kwargs), parser='html')
 
     def render_in_browser(self, **kwargs):
         """Render the graph, open it in your browser with black magic"""
@@ -154,7 +155,8 @@ class PublicApi(BaseGraph):
             margin=5,
             min_scale=1,
             max_scale=2,
-            explicit_size=True
+            explicit_size=True,
+            no_data_text=''
         )
         spark_options.update(kwargs)
         return self.render(**spark_options)
