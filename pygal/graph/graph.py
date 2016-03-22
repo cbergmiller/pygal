@@ -154,7 +154,8 @@ class Graph(PublicApi):
             guide_y = None
             guide_length = None
 
-        for label, position in self._x_labels:
+        for index, x_label in enumerate(self._x_labels):
+            label, position = x_label
             if self.horizontal:
                 major = position in self._x_labels_major
             else:
