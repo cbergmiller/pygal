@@ -159,7 +159,7 @@ class Graph(PublicApi):
             if self.horizontal:
                 major = position in self._x_labels_major
             else:
-                major = label in self._x_labels_major
+                major = index in self._x_labels_major
             if not (self.show_minor_x_labels or major):
                 continue
             guides = self.svg.node(axis, class_='guides')
@@ -852,19 +852,16 @@ class Graph(PublicApi):
 
     def _compute_x_labels_major(self):
         if self.x_labels_major_every:
-            self._x_labels_major = [self._x_labels[i][0] for i in range(
-                0, len(self._x_labels), self.x_labels_major_every)]
+            self._x_labels_major = [i for i in range(0, len(self._x_labels), self.x_labels_major_every)]
 
         elif self.x_labels_major_count:
             label_count = len(self._x_labels)
             major_count = self.x_labels_major_count
             if (major_count >= label_count):
-                self._x_labels_major = [label[0] for label in self._x_labels]
+                self._x_labels_major = [i for i, l in enumerate(self._x_labels)]
 
             else:
-                self._x_labels_major = [self._x_labels[
-                    int(i * (label_count - 1) / (major_count - 1))][0]
-                    for i in range(major_count)]
+                self._x_labels_major = [int(i * (label_count - 1) / (major_count - 1)) for i in range(major_count)]
         else:
             self._x_labels_major = self.x_labels_major and list(
                 map(self._x_label_format_if_value, self.x_labels_major)) or []
